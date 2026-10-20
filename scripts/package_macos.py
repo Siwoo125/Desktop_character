@@ -5,6 +5,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import unicodedata
 import zipfile
 
 
@@ -38,7 +39,15 @@ def main():
     output.parent.mkdir(parents=True, exist_ok=True)
     if output.exists():
         output.unlink()
-    subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(stage), str(output)], check=True)
+    # ditto's ZIP output may omit the UTF-8 flag for Korean names. Python's
+    # writer marks UTF-8 correctly and preserves Unix modes (including +x).
+    # This app has no resource forks or symlinks that require AppleDouble.
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(stage.rglob("*")):
+            if path.is_symlink():
+                raise ValueError(f"Unexpected symlink in portable app: {path}")
+            name = unicodedata.normalize("NFC", path.relative_to(stage.parent).as_posix())
+            archive.write(path, name)
     with zipfile.ZipFile(output) as archive:
         assert archive.testzip() is None
     print(output)
