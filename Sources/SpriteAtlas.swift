@@ -164,7 +164,13 @@ struct SpriteAtlas {
     }
 
     var allSprites: [DogSprite] {
-        [resting] + idle + walking + (walkingLeft ?? []) + running + jumping + descending + gazing + cursorJump + cursorRoll + leaping
+        // Avoid a long overloaded '+' chain, which exceeds the type-checking
+        // budget in some Swift toolchains used by the release runners.
+        let animations: [[DogSprite]] = [idle, walking, walkingLeft ?? [], running,
+                                        jumping, descending, gazing, cursorJump, cursorRoll, leaping]
+        var result: [DogSprite] = [resting]
+        for frames in animations { result.append(contentsOf: frames) }
+        return result
     }
 
     func movementSprite(gait: GroundGait, facingLeft: Bool, at time: TimeInterval) -> (DogSprite, Bool) {
