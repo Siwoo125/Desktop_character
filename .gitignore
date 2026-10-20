@@ -1,0 +1,13 @@
+.build/
+build/
+backups/
+.DS_Store
+.venv-windows/
+__pycache__/
+*.pyc
+dist/
+.env
+.env.*
+*.p12
+*.pfx
+*.mobileprovision

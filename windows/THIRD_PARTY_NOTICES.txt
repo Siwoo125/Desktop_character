@@ -1,0 +1,33 @@
+DesktopCharacter Windows third-party notices
+
+Keep _internal, licenses, SOURCE-CODE.txt and all notices with the EXE.
+Libraries remain separate and dynamically loaded. BUILD-INFO.json records
+exact versions and the application source commit.
+
+Qt / PySide6-Essentials / Shiboken6 6.10.2:
+  Copyright The Qt Company Ltd. and contributors.
+  This project uses the LGPLv3 option for LGPL modules, with applicable Qt
+  exceptions. Individual bundled dependencies have their own notices.
+  https://doc.qt.io/qtforpython-6/licenses.html
+  Source and build directions: SOURCE-CODE.txt and docs/RELEASING.md.
+  You may replace compatible DLLs/modules with modified builds. Reverse
+  engineering to debug such changes is permitted. No Qt Addons are installed.
+
+Pillow 12.0.0:
+  Copyright Pillow contributors. MIT-CMU and bundled third-party notices.
+  https://github.com/python-pillow/Pillow/tree/12.0.0
+
+Python:
+  Python Software Foundation license and bundled third-party notices.
+  Exact version: BUILD-INFO.json. License: licenses/Python-LICENSE.txt.
+  https://www.python.org/downloads/source/
+
+PyInstaller 6.22.3:
+  GPL with bootloader distribution exception permitting the application's
+  own license. https://pyinstaller.org/en/stable/license.html
+
+Original application code: MIT (LICENSE).
+Puppy images: CC BY 4.0 only to the extent the provider holds copyright.
+Bonobono fan images: excluded from MIT and CC; no asset license granted by
+this project. Original character rights remain with their owners and no
+redistribution permission has been verified. See ASSET_LICENSES.md.
