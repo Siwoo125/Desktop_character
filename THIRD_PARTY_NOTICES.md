@@ -16,6 +16,9 @@ Shiboken6 6.10.2, Pillow 12.0.0, a Python runtime, and a PyInstaller bootloader.
 The build uses PySide6-Essentials; it does not install Qt Addons. Individual
 components retain their own licenses, copyright and attribution notices.
 Installed packages' license files are copied into `licenses/` in the ZIP;
+`licenses/Qt-6.10.2/` additionally preserves upstream LGPL/GPL license texts
+and third-party attributions from QtBase, QtSvg, QtImageFormats and PySide.
+Their original source archive URLs and SHA-256 hashes are recorded there.
 Python's license is also retained alongside its runtime. See
 `THIRD_PARTY_NOTICES.txt` in the Windows folder and `BUILD-INFO.json` for versions.
 

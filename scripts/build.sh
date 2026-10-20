@@ -31,7 +31,7 @@ cp img/bonobono-sprites/*.png "$APP_DIR/Contents/Resources/img/bonobono-sprites/
 cp img/bonobono-sprites/*.txt "$APP_DIR/Contents/Resources/img/bonobono-sprites/"
 cp LICENSE ASSET_LICENSES.md THIRD_PARTY_NOTICES.md "$APP_DIR/Contents/Resources/"
 mkdir -p "$APP_DIR/Contents/Resources/licenses"
-cp licenses/* "$APP_DIR/Contents/Resources/licenses/"
+cp -R licenses/. "$APP_DIR/Contents/Resources/licenses/"
 cp Info.plist "$APP_DIR/Contents/Info.plist"
 codesign --force --sign - --timestamp=none "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"

@@ -26,6 +26,8 @@ def main():
                  "windows/SOURCE-CODE.txt", f"docs/releases/{version}.md"):
         assert (ROOT / name).stat().st_size > 100, name
     assert "Creative Commons Attribution 4.0" in (ROOT / "licenses/CC-BY-4.0.txt").read_text()
+    qt_lgpl = "licenses/Qt-6.10.2/pyside-setup/LICENSES/LGPL-3.0-only.txt"
+    assert "GNU LESSER GENERAL PUBLIC LICENSE" in (ROOT / qt_lgpl).read_text()
     assets = {unicodedata.normalize("NFC", p.relative_to(ROOT / "img").as_posix())
               for p in (ROOT / "img").rglob("*.png")}
     assert len(assets) == 19, assets
@@ -41,7 +43,7 @@ def main():
             assert re.fullmatch(r"[a-f0-9]{40}", info["commit"]), info
             for asset in assets:
                 assert any(n.endswith("/img/" + asset) for n in names), asset
-            for notice in ("LICENSE", "ASSET_LICENSES.md", "THIRD_PARTY_NOTICES.md", "licenses/CC-BY-4.0.txt"):
+            for notice in ("LICENSE", "ASSET_LICENSES.md", "THIRD_PARTY_NOTICES.md", "licenses/CC-BY-4.0.txt", qt_lgpl):
                 assert "DesktopCharacter/" + notice in names, notice
             if "Windows" in path.name:
                 assert "DesktopCharacter/DesktopCharacter.exe" in names

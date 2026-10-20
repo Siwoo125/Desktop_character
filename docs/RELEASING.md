@@ -42,7 +42,7 @@ Qt 빌드: https://doc.qt.io/qt-6/windows-building.html
 
 PySide 빌드: https://doc.qt.io/qtforpython-6/building_from_source/index.html
 
-`licenses/`에는 설치한 패키지의 라이선스·저작권 파일, Python 라이선스와 프로젝트 에셋 라이선스를 보존합니다. 별도 통지가 적용되는 플러그인·하위 라이브러리는 그 통지를 따릅니다.
+`licenses/`에는 설치한 패키지의 라이선스·저작권 파일, Python 라이선스와 프로젝트 에셋 라이선스를 보존합니다. 패키지에서 누락될 수 있는 Qt/PySide의 LGPL·GPL 전문과 외부 구성요소 고지는 `licenses/Qt-6.10.2/`에도 보관합니다. 이 파일들은 공식 소스 아카이브에서 수집했고 URL과 SHA-256을 함께 기록했습니다. 의존성 갱신 시 `python3 scripts/vendor_qt_notices.py`로 갱신하고 검토하세요. 이 수집에는 네트워크가 필요하지만 일반 앱 빌드는 저장소에 포함된 고지를 사용합니다. 별도 통지가 적용되는 플러그인·하위 라이브러리는 그 통지를 따릅니다.
 
 ## GitHub Actions
 
