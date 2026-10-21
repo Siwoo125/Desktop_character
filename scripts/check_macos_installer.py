@@ -4,6 +4,7 @@ import json
 import plistlib
 import subprocess
 import tempfile
+from package_macos_installer import checked_hdiutil
 
 
 def main():
@@ -12,7 +13,7 @@ def main():
     image = root / "dist" / f"DesktopCharacter-{version}-macOS-Universal-Installer.dmg"
     with tempfile.TemporaryDirectory(prefix="desktopcharacter-dmg-") as directory:
         mount = Path(directory) / "volume"
-        subprocess.run(["hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount), str(image)], check=True)
+        checked_hdiutil("attach", "-readonly", "-nobrowse", "-mountpoint", mount, image)
         try:
             installer = mount / "바탕화면 친구 설치.app"
             payload = installer / "Contents/Resources/바탕화면 강아지.app"

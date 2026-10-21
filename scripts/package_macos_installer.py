@@ -4,6 +4,22 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import time
+
+
+def checked_hdiutil(*arguments):
+    # diskimages-helper can briefly keep a newly created image busy on CI.
+    # Retry only that OS-reported temporary condition; corruption still fails.
+    for attempt in range(4):
+        result = subprocess.run(["hdiutil", *map(str, arguments)], capture_output=True, text=True)
+        print(result.stdout, end="")
+        print(result.stderr, end="", file=sys.stderr)
+        if result.returncode == 0:
+            return
+        if attempt == 3 or not any(message in result.stderr for message in
+                                   ("Resource temporarily unavailable", "Resource busy")):
+            result.check_returncode()
+        time.sleep(2)
 
 
 def main():
@@ -53,8 +69,8 @@ def main():
     if output.exists():
         output.unlink()
     subprocess.run(["hdiutil", "create", "-volname", f"DesktopCharacter {version}", "-srcfolder", str(image),
-                    "-format", "UDZO", "-ov", str(output)], check=True)
-    subprocess.run(["hdiutil", "verify", str(output)], check=True)
+                    "-fs", "HFS+", "-format", "UDZO", "-ov", str(output)], check=True)
+    checked_hdiutil("verify", output)
     print(output)
 
 
