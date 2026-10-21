@@ -47,3 +47,7 @@ Upstream projects:
 - https://github.com/pyinstaller/pyinstaller/tree/v6.22.3
 
 No license for a library grants rights to the character images.
+# Windows 설치 도구
+
+Windows 설치 파일은 [Inno Setup 7.1.0](https://github.com/jrsoftware/issrc/releases/tag/is-7_1_0)으로 생성합니다. Inno Setup의 저작권과 [라이선스](https://github.com/jrsoftware/issrc/blob/is-7_1_0/license.txt)는 Jordan Russell 및 Martijn Laan에게 있습니다. 설치 엔진의 원래 저작권·웹사이트 표기를 유지합니다.
+

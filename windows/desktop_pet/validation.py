@@ -199,6 +199,8 @@ def validate_widget(preview_dir: Path | None = None) -> None:
             window.deleteLater()
     print("PASS: Qt 투명 창 그리기·캐릭터/배율 메뉴·동작 예시·조종 전환·커서 잡기 중 캐릭터 전환 (Win32는 테스트 대역)")
     validate_collection(preview_dir)
+    from .ai_checks import run as ai_checks
+    ai_checks()
 
 
 def validate_creator(window, folder: Path, preview_dir: Path | None) -> None:

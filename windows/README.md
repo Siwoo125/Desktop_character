@@ -4,7 +4,9 @@
 
 ## 바로 실행
 
-[GitHub Releases](https://github.com/Siwoo125/Desktop_character/releases/tag/v1.0.0)에서 `DesktopCharacter-1.0.0-Windows-x64.zip`을 받으세요. Windows 10/11 x64에서 전체 압축 해제 후 **`DesktopCharacter.exe`**를 실행합니다. Python 설치는 필요 없습니다. EXE 옆 `_internal`, `licenses` 폴더도 함께 유지하세요. 배포자 인증서 서명은 하지 않았습니다.
+[GitHub Releases](https://github.com/Siwoo125/Desktop_character/releases/tag/v1.1.0)에서 **`DesktopCharacter-1.1.0-Windows-x64-Setup.exe`**를 받으세요. 설치 완료 화면의 실행 체크를 켠 채 **마침**을 누르면 바로 실행합니다. 관리자 권한 없이 `%LOCALAPPDATA%\Programs\DesktopCharacter`에 설치하며 시작 메뉴에도 추가합니다. 다운로드만으로 실행되거나 로그인 시 자동 실행되지는 않습니다. 삭제는 Windows 설정의 앱 제거를 사용하며 사용자 캐릭터·설정·API 키는 유지합니다.
+
+설치 없는 `DesktopCharacter-1.1.0-Windows-x64.zip`도 제공합니다. Windows 10/11 x64에서 전체 압축 해제 후 **`DesktopCharacter.exe`**를 실행합니다. Python 설치는 필요 없습니다. EXE 옆 `_internal`, `licenses` 폴더도 함께 유지하세요. 배포자 인증서 서명은 하지 않았습니다.
 
 소스로 실행하려면 Python 3.13 x64를 설치한 뒤 저장소의 `Start-Windows.cmd`를 실행합니다. Python 3.11~3.14도 지원합니다. 첫 실행은 필요한 패키지를 프로젝트의 `.venv-windows`에 설치하므로 인터넷이 필요합니다. 시스템 Python 패키지나 관리자 권한 설정은 바꾸지 않습니다.
 
@@ -44,6 +46,12 @@
 
 중력, 작업 표시줄 위의 지면, 실제 창의 위·아래 테두리 착지, 창 이동·닫힘, 앞 창에 가려진 발판 제외, 낮은 창부터 차례로 오르기, 현재 모니터의 좌우 끝 연결을 적용합니다. 다른 모니터로 옮길 때는 캐릭터를 드래그하세요. 모니터별 DPI 비율과 음수 화면 좌표를 별도로 변환합니다.
 
+## AI 모션 생성
+
+기본 정지 PNG만 선택하고 **API 추가 · 검증…**에서 개인 키를 등록할 수 있습니다. **검증 → 추가** 후 이미지 API를 골라 **전체 모션 만들기**를 누르세요. 동작별 재생성 버튼과 생성 중단 버튼도 있습니다. OpenAI·Gemini는 시트 생성, Claude는 선택 설명 보조용입니다. API 키는 Windows 자격 증명 관리자에 저장하며 설정 JSON에 포함하지 않습니다.
+
+생성에는 정지 이미지와 현재 선택한 모션 예시를 함께 전송하고 개인 API 요금이 발생할 수 있습니다. [상세 안내](../docs/AI_MOTIONS.md)를 확인하세요.
+
 ## 커서 잡기
 
 자동 모드에서 약 1분마다 근처의 멈춘 커서를 잡으려 시도합니다. 수동 시도는 **동작 예시 → 커서 잡기**를 고른 뒤 커서를 잡을 수 있는 높이에 두고 1초간 멈추면 됩니다.
@@ -81,7 +89,7 @@ Windows에서 **`windows/build.cmd`**를 더블클릭합니다. PyInstaller 설�
 
 ```text
 dist/windows/DesktopCharacter/DesktopCharacter.exe
-dist/DesktopCharacter-1.0.0-Windows-x64.zip
+dist/DesktopCharacter-1.1.0-Windows-x64.zip
 ```
 
 친구에게는 생성된 **ZIP 전체**를 보내세요. 압축을 푼 뒤 `DesktopCharacter.exe`를 실행하면 됩니다. 친구 PC에는 Python을 설치하지 않아도 됩니다. EXE 하나만 떼어 보내지 말고 `_internal`, `licenses`를 포함한 전체 폴더를 유지하세요. 이 스크립트는 Windows에서 실행해야 하며 macOS에서 Windows EXE를 생성하지 않습니다. 배포용 인증서 서명은 별도입니다.

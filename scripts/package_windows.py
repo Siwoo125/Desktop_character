@@ -12,6 +12,7 @@ files += [root / name for name in ("VERSION", "README.md", "LICENSE", "ASSET_LIC
 files += [p for directory in ("licenses", "docs") for p in (root / directory).rglob("*") if p.is_file()]
 files += [p for p in (root / "windows").rglob("*") if p.is_file() and "__pycache__" not in p.parts]
 files += list((root / "img").rglob("*.png"))
+files += list((root / "ai").glob("*.json"))
 prefix = "DesktopFriends-Windows/"
 with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
     for path in sorted(files):

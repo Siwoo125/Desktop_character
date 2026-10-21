@@ -21,6 +21,7 @@ def main() -> int:
     subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--windowed",
                     "--name", "DesktopCharacter", "--manifest", str(root / "windows" / "app.manifest"),
                     "--paths", str(root / "windows"), "--add-data", f"{root / 'img'}:img",
+                    "--add-data", f"{root / 'ai'}:ai",
                     "--distpath", str(root / "dist" / "windows"), "--workpath", str(work / "work"),
                     "--specpath", str(work), str(root / "windows" / "launch.py")], check=True)
     output = root / "dist" / "windows" / "DesktopCharacter"

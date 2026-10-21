@@ -4,14 +4,18 @@
 
 ## 다운로드 · 실행
 
-[**v1.0.0 다운로드**](https://github.com/Siwoo125/Desktop_character/releases/tag/v1.0.0)
+[**v1.1.0 다운로드**](https://github.com/Siwoo125/Desktop_character/releases/tag/v1.1.0)
 
 | 운영체제 | 받을 파일 | 실행 방법 |
 | --- | --- | --- |
-| macOS 13 이상 · Apple Silicon / Intel | `DesktopCharacter-1.0.0-macOS-Universal.zip` | 압축 해제 → `바탕화면 강아지.app`을 응용 프로그램 폴더로 옮겨 실행 |
-| Windows 10/11 · x64 | `DesktopCharacter-1.0.0-Windows-x64.zip` | **전체 압축 해제** → `DesktopCharacter.exe` 실행 |
+| macOS 13 이상 · Apple Silicon / Intel | `DesktopCharacter-1.1.0-macOS-Universal-Installer.dmg` | 열기 → **바탕화면 친구 설치.app** → **설치하고 실행** |
+| Windows 10/11 · x64 | `DesktopCharacter-1.1.0-Windows-x64-Setup.exe` | 설치 → 완료 화면의 **실행** 체크 유지 → **마침** |
 
-배포 ZIP은 Swift·Python을 따로 설치할 필요가 없습니다. Windows는 EXE 옆의 `_internal`, `licenses` 폴더도 함께 보관하세요. macOS 앱은 임시 서명(ad-hoc)만 했으며 Developer ID 서명·공증을 하지 않았습니다. Windows EXE도 배포자 인증서 서명이 없습니다. macOS가 실행을 차단하면 출처를 확인한 뒤 [Apple의 앱별 실행 허용 안내](https://support.apple.com/ko-kr/102445)를 참고하세요.
+설치를 마치면 앱이 바로 실행됩니다. **다운로드만으로 실행되지는 않으며, 설치 파일을 한 번 열어야 합니다.** 로그인 시 자동 실행은 설정하지 않습니다. macOS는 `~/Applications/바탕화면 강아지.app`, Windows는 `%LOCALAPPDATA%\Programs\DesktopCharacter`에 사용자 권한으로 설치합니다. 업데이트 전 기존 앱의 **모두 종료**를 선택하세요. 캐릭터와 개인 API 설정은 유지합니다.
+
+설치 없이 쓰는 `macOS-Universal.zip`, `Windows-x64.zip`도 제공합니다. Swift·Python 설치는 필요 없습니다. ZIP은 전체 압축 해제하고 앱을 직접 실행하며, Windows EXE 옆 `_internal`, `licenses` 폴더도 함께 보관하세요. macOS 앱·설치 앱은 임시 서명(ad-hoc)만 했으며 Developer ID 서명·공증을 하지 않았습니다. Windows EXE·설치 파일도 배포자 인증서 서명이 없습니다. macOS가 실행을 차단하면 출처를 확인한 뒤 [Apple의 앱별 실행 허용 안내](https://support.apple.com/ko-kr/102445)를 참고하세요.
+
+삭제는 앱 종료 후 macOS에서는 설치된 앱을 휴지통으로, Windows에서는 **설정 → 앱 → DesktopCharacter 제거**를 사용하세요. 사용자 캐릭터·설정·API 키는 자동 삭제하지 않습니다.
 
 첫 실행에는 **강아지 한 마리**가 나타납니다. 다음 실행부터는 저장된 캐릭터 구성을 복원하고, 저장된 수가 0마리면 강아지 한 마리를 띄웁니다. 메뉴는 macOS 메뉴 막대 또는 Windows 트레이(숨겨진 아이콘 `∧`)에 있습니다.
 
@@ -67,6 +71,12 @@ macOS는 실제 포인터를 원래 위치에서 잠시 숨기고 손에 커서�
 
 점프는 윗줄 도약·아랫줄 하강(각 줄 준비 → 공중 → 착지 직전 → 착지) 또는 연속 8자세 중 선택할 수 있습니다. **커서 잡기·구르기에는 커서를 그리지 마세요.** 미리보기에서 프레임을 고르고 손 위치를 클릭해 커서 접점을 맞춥니다. 점프 5~8번, 구르기는 모든 프레임에 적용됩니다.
 
+## AI로 모션 자동 생성
+
+기본 정지 PNG만 선택한 뒤 **API 추가 · 검증… → 개인 API 입력 → 검증 → 추가 → 전체 모션 만들기**를 사용하세요. 각 동작 오른쪽의 **이 모션만 다시 만들기**로 개별 재생성할 수 있습니다. 생성 요청에는 **정지 이미지와 해당 모션 예시**를 함께 보냅니다.
+
+OpenAI·Gemini로 시트를 만들고, Claude는 선택적으로 모션 설명을 보조합니다. 키는 macOS 키체인/Windows 자격 증명 관리자에 저장합니다. 생성에는 개인 API 요금이 적용되며 모델 조회 검증만으로 생성 권한·잔액·품질까지 확인되지는 않습니다. [사용 순서와 서비스별 안내](docs/AI_MOTIONS.md)를 참고하세요.
+
 ## 저장 위치와 개인정보
 
 | 운영체제 | 사용자 캐릭터 | 설정 |
@@ -76,7 +86,7 @@ macOS는 실제 포인터를 원래 위치에서 잠시 숨기고 손에 커서�
 
 사용자 이미지는 보관함에 복사하며 원본을 수정하지 않습니다. 삭제한 캐릭터는 보관함의 `.trash/`로 옮깁니다. 캐릭터 폴더의 PNG와 `character.json`은 두 운영체제에서 같은 형식입니다. Windows 오류 로그는 `%LOCALAPPDATA%\DesktopFriends\desktop-pet.log`에 있습니다.
 
-창 인식은 위치·크기·가림 관계를 사용하며 창 제목이나 스크린샷을 저장하지 않습니다. 실행 앱에는 분석·광고·업로드 기능이 없습니다. 소스 실행을 위한 Windows 최초 설치는 패키지 다운로드에 인터넷을 사용합니다.
+창 인식은 위치·크기·가림 관계를 사용하며 창 제목이나 스크린샷을 저장하지 않습니다. 분석·광고 업로드는 없습니다. AI 검증·생성 버튼을 사용하는 경우 선택한 제공자의 API에 연결하며, 생성에는 정지 이미지와 모션 예시를 전송합니다. Claude 보조를 켜면 두 서비스에 전송합니다. 소스 실행을 위한 Windows 최초 설치는 패키지 다운로드에 인터넷을 사용합니다.
 
 ## 소스에서 실행
 

@@ -31,6 +31,13 @@ def main():
     assets = {unicodedata.normalize("NFC", p.relative_to(ROOT / "img").as_posix())
               for p in (ROOT / "img").rglob("*.png")}
     assert len(assets) == 19, assets
+    catalog = json.loads((ROOT / "ai/motions.json").read_text())
+    assert set(catalog["defaults"]) == {"openai", "gemini", "anthropic"}
+    installer = (ROOT / "installers/windows/DesktopCharacter.iss").read_text()
+    assert "PrivilegesRequired=lowest" in installer
+    launch = installer.split("[Run]", 1)[1]
+    assert "postinstall" in launch and "skipifsilent" in launch and "unchecked" not in launch
+    assert "[UninstallDelete]" not in installer, "Do not delete user data when removing the app"
     for path in args.archives or ():
         with zipfile.ZipFile(path) as archive:
             assert archive.testzip() is None, path
@@ -43,6 +50,7 @@ def main():
             assert re.fullmatch(r"[a-f0-9]{40}", info["commit"]), info
             for asset in assets:
                 assert any(n.endswith("/img/" + asset) for n in names), asset
+            assert any(n.endswith("/ai/motions.json") for n in names), "AI motion catalog missing"
             for notice in ("LICENSE", "ASSET_LICENSES.md", "THIRD_PARTY_NOTICES.md", "licenses/CC-BY-4.0.txt", qt_lgpl):
                 assert "DesktopCharacter/" + notice in names, notice
             if "Windows" in path.name:

@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import copy
+import shutil
+import tempfile
+import uuid
 from pathlib import Path
 
 from PySide6.QtCore import QRectF, QTimer, Qt, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (QComboBox, QDialog, QFileDialog, QGroupBox, QHBoxLayout,
-                               QLabel, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QWidget)
+                               QCheckBox, QLabel, QLineEdit, QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
 from .assets import Sprite, image_directory
 from .custom import CharacterLibrary, SLOTS, Slot, default_grips, example_path, validate_png
+from .ai_motion import ConnectionStore, generate, check_cancel
+from .ai_ui import AIJob, APIConnectionsDialog
 
 
 class FrameCanvas(QWidget):
@@ -125,9 +130,18 @@ class CharacterCreator(QDialog):
         self.filename_labels = {}
         self.preview_buttons = {}
         self.preview_dialog = None
+        self.ai_store = ConnectionStore(library.root.parent / "ai-connections.json")
+        self.ai_job = None
+        self.ai_closed = False
+        self.ai_completed = 0
+        self.ai_total = 0
+        self.ai_folder = tempfile.TemporaryDirectory(prefix="DesktopCharacter-AI-")
+        self.ai_buttons = {}
+        self.choose_buttons = []
+        self.ai_generate = generate
         self.setWindowTitle("캐릭터 생성")
-        self.resize(1000, 760)
-        self.setMinimumSize(880, 600)
+        self.resize(1040, 840)
+        self.setMinimumSize(940, 700)
         self.setWindowModality(Qt.WindowModality.WindowModal)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         layout = QVBoxLayout(self)
@@ -163,6 +177,27 @@ class CharacterCreator(QDialog):
         self.layout_picker.setCurrentIndex(1 if template == "bonobono" else 0)
         jump_row.addWidget(self.layout_picker, 1)
         layout.addLayout(jump_row)
+        api_row = QHBoxLayout()
+        api_row.addWidget(QLabel("이미지 API"))
+        self.ai_picker = QComboBox(); api_row.addWidget(self.ai_picker, 1)
+        self.api_manage = QPushButton("API 추가 · 검증…")
+        self.api_manage.clicked.connect(self.open_api_settings); api_row.addWidget(self.api_manage)
+        layout.addLayout(api_row)
+        ai_row = QHBoxLayout()
+        self.generate_all_button = QPushButton("전체 모션 만들기")
+        self.generate_all_button.clicked.connect(self.generate_all); ai_row.addWidget(self.generate_all_button)
+        self.overwrite_ai = QCheckBox("기존 모션도 다시 만들기"); ai_row.addWidget(self.overwrite_ai)
+        self.cancel_ai_button = QPushButton("생성 중단"); self.cancel_ai_button.setEnabled(False)
+        self.cancel_ai_button.clicked.connect(self.cancel_ai); ai_row.addWidget(self.cancel_ai_button)
+        ai_row.addWidget(QLabel("Claude 보조 (선택)"))
+        self.director_picker = QComboBox(); self.director_picker.setMaximumWidth(250); ai_row.addWidget(self.director_picker, 1)
+        layout.addLayout(ai_row)
+        self.ai_status = QLabel("정지 PNG만 선택한 뒤 API를 추가·검증하세요. 생성 시 정지 이미지 + 동작 예시를 해당 서비스에 전송하며 API 요금이 발생할 수 있습니다.")
+        self.ai_status.setWordWrap(True); self.ai_status.setTextFormat(Qt.TextFormat.PlainText)
+        layout.addWidget(self.ai_status)
+        self.reload_ai()
+        self.ai_picker.currentIndexChanged.connect(self.select_ai)
+        self.director_picker.currentIndexChanged.connect(self.select_ai)
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         content = QWidget()
@@ -192,6 +227,7 @@ class CharacterCreator(QDialog):
             description.setWordWrap(True)
             controls.addWidget(description)
             choose = QPushButton("이미지 선택…")
+            self.choose_buttons.append(choose)
             choose.clicked.connect(lambda _checked=False, s=slot: self.choose_file(s))
             controls.addWidget(choose)
             preview = QPushButton("미리보기 · 재생")
@@ -202,6 +238,10 @@ class CharacterCreator(QDialog):
             example = QPushButton("예시 크게 보기")
             example.clicked.connect(lambda _checked=False, s=slot: self.show_example(s))
             controls.addWidget(example)
+            make = QPushButton("이 정지 자세로 전체 만들기" if slot.key == "standing" else "이 모션만 다시 만들기")
+            make.clicked.connect(lambda _checked=False, s=slot: self.generate_all() if s.key == "standing" else self.make_motions([s]))
+            self.ai_buttons[slot.key] = make
+            controls.addWidget(make)
             grid.addLayout(controls, 1)
             cards.addWidget(group)
         extra_title = QLabel("커서가 그려진 원본도 참고하세요 (참고용 2장)\n실제 등록에는 위의 ‘커서 없는’ 점프·구르기 이미지를 사용하세요.")
@@ -258,7 +298,7 @@ class CharacterCreator(QDialog):
         count = sum(slot.required and slot.key in self.files for slot in SLOTS)
         self.status.setText(f"필수 이미지 {count}/8 · 저장하면 이미지를 앱 보관함에 복사하고 새 캐릭터 한 마리를 추가합니다. 원본 파일은 수정하지 않습니다.")
         self.status.setStyleSheet("")
-        self.save_button.setEnabled(count == 8 and 1 <= len(self.name_field.text().strip()) <= 40)
+        self.save_button.setEnabled(count == 8 and 1 <= len(self.name_field.text().strip()) <= 40 and self.ai_job is None)
 
     def change_template(self, index):
         self.template = "puppy" if index == 0 else "bonobono"
@@ -331,6 +371,114 @@ class CharacterCreator(QDialog):
         self.status.setStyleSheet("color: #d04444")
 
     def done(self, result):
+        self.ai_closed = True
+        if self.ai_job:
+            self.ai_job.cancel.set()
+            self.ai_job = None
+        elif self.ai_folder:
+            self.ai_folder.cleanup()
+        self.ai_folder = None
         if self.preview_dialog:
             self.preview_dialog.close()
         super().done(result)
+
+    def reload_ai(self):
+        for picker in (self.ai_picker, self.director_picker): picker.blockSignals(True); picker.clear()
+        self.ai_picker.addItem("이미지 생성 API 선택", None)
+        self.director_picker.addItem("사용 안 함", None)
+        for c in self.ai_store.connections:
+            picker = self.ai_picker if c.image_capable else self.director_picker
+            picker.addItem(("✓ " if c.verified_at else "미검증 · ") + c.name, c.id)
+        ri = self.ai_picker.findData(self.ai_store.renderer_id)
+        self.ai_picker.setCurrentIndex(ri if ri >= 1 else min(1, self.ai_picker.count()-1))
+        self.director_picker.setCurrentIndex(max(0, self.director_picker.findData(self.ai_store.director_id)))
+        for picker in (self.ai_picker, self.director_picker): picker.blockSignals(False)
+
+    def select_ai(self, *_):
+        self.ai_store.renderer_id, self.ai_store.director_id = self.ai_picker.currentData(), self.director_picker.currentData()
+        try: self.ai_store.persist()
+        except Exception as error: self.ai_status.setText(str(error))
+
+    def open_api_settings(self):
+        dialog = APIConnectionsDialog(self.ai_store, self)
+        dialog.changed.connect(self.reload_ai)
+        dialog.exec()
+        dialog.deleteLater()
+
+    def generate_all(self):
+        self.make_motions([s for s in SLOTS if s.key != "standing" and (self.overwrite_ai.isChecked() or s.key not in self.files)])
+
+    def set_ai_busy(self, busy):
+        for widget in [self.generate_all_button, self.overwrite_ai, self.ai_picker, self.director_picker, self.api_manage,
+                       self.template_picker, self.layout_picker, *self.choose_buttons, *self.ai_buttons.values()]:
+            widget.setEnabled(not busy)
+        self.cancel_ai_button.setEnabled(busy)
+        self.update_status()
+
+    def make_motions(self, slots):
+        if self.ai_job is not None: return
+        try:
+            if not slots: raise ValueError("모든 모션이 있습니다. 개별 재생성 또는 ‘기존 모션도 다시 만들기’를 선택하세요.")
+            if "standing" not in self.files: raise ValueError("기본 정지 자세 PNG를 먼저 선택하세요.")
+            renderer = next((c for c in self.ai_store.connections if c.id == self.ai_picker.currentData()), None)
+            if renderer is None or renderer.verified_at is None: raise ValueError("이미지 API를 추가·검증하고 선택하세요.")
+            director = next((c for c in self.ai_store.connections if c.id == self.director_picker.currentData()), None)
+            if director is not None and director.verified_at is None: raise ValueError("Claude 보조 API도 먼저 검증하세요.")
+            key = self.ai_store.vault.get(renderer.id)
+            director_key = self.ai_store.vault.get(director.id) if director else None
+            temporary = self.ai_folder  # Worker retains temp files safely if the dialog closes.
+            folder = Path(temporary.name)
+            standing = folder / (uuid.uuid4().hex + "-standing.png")
+            shutil.copyfile(self.files["standing"], standing)
+            layout = "split" if self.layout_picker.currentIndex() == 0 else "continuous"
+            template, operation = self.template, self.ai_generate
+            self.ai_completed, self.ai_total = 0, len(slots)
+
+            def run(job):
+                for index, slot in enumerate(slots):
+                    check_cancel(job.cancel)
+                    job.signals.progress.emit(f"{index}/{len(slots)} · {slot.title} 생성 중… 정지 이미지 + 모션 예시 전송")
+                    output = Path(temporary.name) / (uuid.uuid4().hex + "-" + slot.filename)
+                    operation(renderer, key, slot, layout, standing, example_path(image_directory(), template, slot.key), output,
+                              director=director, director_key=director_key, mirror_example=template == "puppy" and slot.key == "walk_left", cancel=job.cancel)
+                    check_cancel(job.cancel)
+                    job.signals.generated.emit(slot, output)
+
+            job = AIJob(run)
+            job.signals.progress.connect(self.ai_progress, Qt.ConnectionType.QueuedConnection)
+            job.signals.generated.connect(self.ai_generated, Qt.ConnectionType.QueuedConnection)
+            job.signals.finished.connect(self.ai_finished, Qt.ConnectionType.QueuedConnection)
+            self.ai_job = job
+            self.ai_status.setStyleSheet(""); self.set_ai_busy(True); job.start()
+        except Exception as error:
+            self.ai_status.setStyleSheet("color: #d04444"); self.ai_status.setText(str(error))
+
+    def ai_progress(self, text):
+        if not self.ai_closed: self.ai_status.setText(text)
+
+    def ai_generated(self, slot, path):
+        if self.ai_closed or not self.ai_job or self.ai_job.cancel.is_set(): return
+        try:
+            self.assign(path, slot)
+            if slot.key == "cursor_jump": self.grips["jump"] = default_grips(self.template)["jump"]
+            if slot.key == "cursor_roll": self.grips["roll"] = default_grips(self.template)["roll"]
+            self.ai_completed += 1
+        except Exception as error:
+            self.ai_job.cancel.set(); self.ai_status.setText(str(error))
+
+    def ai_finished(self, _result, error):
+        cancelled = self.ai_job is not None and self.ai_job.cancel.is_set()
+        self.ai_job = None
+        if self.ai_closed: return
+        self.set_ai_busy(False)
+        if error or cancelled:
+            self.ai_status.setStyleSheet("color: #d04444")
+            self.ai_status.setText(f"{self.ai_completed}/{self.ai_total} 완료 · " +
+                ("생성을 취소했습니다. 진행 중 요청은 과금될 수 있습니다." if cancelled else str(error)) + " 완료한 모션과 기존 이미지는 유지합니다.")
+        else:
+            self.ai_status.setText(f"{self.ai_completed}개 모션 생성 완료. 미리보기로 자세와 커서 손 위치를 확인한 뒤 저장하세요.")
+
+    def cancel_ai(self):
+        if self.ai_job:
+            self.ai_job.cancel.set(); self.cancel_ai_button.setEnabled(False)
+            self.ai_status.setText("취소 요청 중… 진행 중이던 요청은 과금될 수 있습니다. 완료한 모션은 유지합니다.")

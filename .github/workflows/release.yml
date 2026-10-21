@@ -31,10 +31,14 @@ jobs:
         run: |
           python3 scripts/package_macos.py
           python3 scripts/check_release.py --archives dist/DesktopCharacter-*-macOS-Universal.zip
+          python3 scripts/package_macos_installer.py
+          python3 scripts/check_macos_installer.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-macos
-          path: dist/DesktopCharacter-*-macOS-Universal.zip
+          path: |
+            dist/DesktopCharacter-*-macOS-Universal.zip
+            dist/DesktopCharacter-*-macOS-Universal-Installer.dmg
           if-no-files-found: error
           compression-level: 0
 
@@ -74,12 +78,20 @@ jobs:
           $diagnose = Start-Process -FilePath $exe -ArgumentList '--diagnose --check-report .build/frozen-diagnosis.log' -WorkingDirectory $PWD -Wait -PassThru
           if (Test-Path .build/frozen-diagnosis.log) { Get-Content .build/frozen-diagnosis.log }
           if ($diagnose.ExitCode -ne 0) { throw "Packaged Win32 diagnosis failed: $($diagnose.ExitCode)" }
-          python scripts/check_release.py --archives dist/DesktopCharacter-1.0.0-Windows-x64.zip
+          $version = (Get-Content VERSION -Raw).Trim()
+          python scripts/check_release.py --archives "dist/DesktopCharacter-$version-Windows-x64.zip"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build per-user installer and test installation
+        timeout-minutes: 8
+        run: |
+          ./scripts/package_windows_installer.ps1
+          ./scripts/check_windows_installer.ps1
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-windows
-          path: dist/DesktopCharacter-*-Windows-x64.zip
+          path: |
+            dist/DesktopCharacter-*-Windows-x64.zip
+            dist/DesktopCharacter-*-Windows-x64-Setup.exe
           if-no-files-found: error
           compression-level: 0
 
@@ -110,5 +122,7 @@ jobs:
           test "$GITHUB_REF_NAME" = "v$VERSION"
           python3 scripts/check_release.py --archives dist/*.zip
           cd dist
-          sha256sum *.zip > SHA256SUMS.txt
-          gh release create "$GITHUB_REF_NAME" ./*.zip SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "DesktopCharacter $VERSION" --notes-file "../docs/releases/$VERSION.md"
+          test -s "DesktopCharacter-$VERSION-macOS-Universal-Installer.dmg"
+          test -s "DesktopCharacter-$VERSION-Windows-x64-Setup.exe"
+          sha256sum *.zip *.dmg *.exe > SHA256SUMS.txt
+          gh release create "$GITHUB_REF_NAME" ./*.zip ./*.dmg ./*.exe SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "DesktopCharacter $VERSION" --notes-file "../docs/releases/$VERSION.md"

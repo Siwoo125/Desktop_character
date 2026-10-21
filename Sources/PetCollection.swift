@@ -212,7 +212,14 @@ struct PetRosterStore {
             if CommandLine.arguments.contains("--self-test") {
                 try DesktopDog().runChecks(atlases: atlases)
                 if CommandLine.arguments.contains("--collection-window-check") { try CollectionChecks.run(atlases: atlases, imagesRoot: root) }
-                NSApp.terminate(nil); return
+                if CommandLine.arguments.contains("--creator-window-check") {
+                    Task { @MainActor in
+                        do { try await AIMotionChecks.run(imagesRoot: root) }
+                        catch { fputs("FAIL: \(error.localizedDescription)\n", stderr); exit(1) }
+                        NSApp.terminate(nil)
+                    }
+                } else { NSApp.terminate(nil) }
+                return
             }
             let collection = PetCollection(atlases: atlases); self.collection = collection
             collection.makeStatusMenu()

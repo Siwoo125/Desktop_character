@@ -18,6 +18,21 @@ final class CharacterCreator: NSWindowController, NSWindowDelegate, NSTextFieldD
     let layoutPicker = NSPopUpButton()
     let saveButton = NSButton(title: "저장하고 사용", target: nil, action: nil)
     let statusLabel = NSTextField(wrappingLabelWithString: "")
+    let aiStore: AIConnectionStore
+    let aiPicker = NSPopUpButton(), directorPicker = NSPopUpButton()
+    let generateAllButton = NSButton(title: "전체 모션 만들기", target: nil, action: nil)
+    let cancelAIButton = NSButton(title: "생성 중단", target: nil, action: nil)
+    let overwriteAI = NSButton(checkboxWithTitle: "기존 모션도 다시 만들기", target: nil, action: nil)
+    let aiStatus = NSTextField(wrappingLabelWithString: "정지 PNG만 선택한 뒤 API를 추가·검증하세요. 생성 시 정지 이미지와 선택한 동작 예시를 해당 서비스에 전송하며 API 요금이 발생할 수 있습니다.")
+    var aiService = AIMotionService()
+    private var aiWindow: AIConnectionsWindow?
+    private var aiTask: Task<Void, Never>?
+    private var aiBusy = false
+    private var aiClosed = false
+    private let aiFolder = FileManager.default.temporaryDirectory.appendingPathComponent("DesktopCharacter-AI-" + UUID().uuidString)
+    private var aiButtons: [CharacterSlot: NSButton] = [:]
+    private var chooseButtons: [NSButton] = []
+    private var aiManageButton: NSButton!
     private var template: PetCharacter
     private var sampleViews: [CharacterSlot: NSImageView] = [:]
     private var uploadViews: [CharacterSlot: NSImageView] = [:]
@@ -26,16 +41,17 @@ final class CharacterCreator: NSWindowController, NSWindowDelegate, NSTextFieldD
     private var preview: CharacterAnimationPreview?
     private var extraReferences: [NSImageView] = []
 
-    init(store: CustomCharacterStore, imagesRoot: URL, template: PetCharacter) {
+    init(store: CustomCharacterStore, imagesRoot: URL, template: PetCharacter, aiConnections: AIConnectionStore? = nil) {
         self.store = store
         self.imagesRoot = imagesRoot
         self.template = template
+        aiStore = aiConnections ?? AIConnectionStore(url: store.root.deletingLastPathComponent().appendingPathComponent("ai-connections.json"))
         grips = CustomCharacter.defaultGrips(template)
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 760),
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 840),
                               styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
         super.init(window: window)
         window.title = "캐릭터 생성"
-        window.minSize = NSSize(width: 860, height: 580)
+        window.minSize = NSSize(width: 940, height: 700)
         window.isReleasedWhenClosed = false
         window.delegate = self
         build()
@@ -94,6 +110,22 @@ final class CharacterCreator: NSWindowController, NSWindowDelegate, NSTextFieldD
         let layout = NSStackView(views: [label("점프 시트 순서", bold: true), layoutPicker])
         layout.spacing = 10
         outer.addArrangedSubview(layout)
+        aiManageButton = NSButton(title: "API 추가 · 검증…", target: self, action: #selector(openAISettings))
+        aiPicker.target = self; aiPicker.action = #selector(selectAI)
+        directorPicker.target = self; directorPicker.action = #selector(selectAI)
+        directorPicker.widthAnchor.constraint(lessThanOrEqualToConstant: 250).isActive = true
+        directorPicker.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        aiPicker.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
+        let apiRow = NSStackView(views: [label("이미지 API", bold: true), aiPicker, aiManageButton])
+        apiRow.spacing = 10; outer.addArrangedSubview(apiRow)
+        generateAllButton.target = self; generateAllButton.action = #selector(generateAll)
+        cancelAIButton.target = self; cancelAIButton.action = #selector(cancelAI); cancelAIButton.isEnabled = false
+        let aiActions = NSStackView(views: [generateAllButton, overwriteAI, cancelAIButton, label("Claude 보조 (선택)"), directorPicker])
+        aiActions.spacing = 10; outer.addArrangedSubview(aiActions)
+        aiStatus.textColor = .secondaryLabelColor
+        outer.addArrangedSubview(aiStatus)
+        aiStatus.widthAnchor.constraint(equalTo: outer.widthAnchor).isActive = true
+        reloadAI()
         let scroll = NSScrollView()
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
@@ -126,12 +158,16 @@ final class CharacterCreator: NSWindowController, NSWindowDelegate, NSTextFieldD
             middle.orientation = .vertical; middle.alignment = .leading; middle.spacing = 6
             let choose = NSButton(title: "이미지 선택…", target: self, action: #selector(chooseImage(_:)))
             choose.tag = index
+            chooseButtons.append(choose)
             let play = NSButton(title: "미리보기 · 재생", target: self, action: #selector(previewImage(_:)))
             play.tag = index; play.isEnabled = false
             previewButtons[slot] = play
             let original = NSButton(title: "예시 크게 보기", target: self, action: #selector(showExample(_:)))
             original.tag = index
             let buttons = NSStackView(views: [label(slot.guide), choose, play, original])
+            let generate = NSButton(title: slot == .standing ? "이 정지 자세로 전체 만들기" : "이 모션만 다시 만들기", target: self, action: #selector(generateOne(_:)))
+            generate.tag = index; aiButtons[slot] = generate
+            buttons.addArrangedSubview(generate)
             buttons.orientation = .vertical; buttons.alignment = .leading; buttons.spacing = 6
             let row = NSStackView(views: [left, middle, buttons])
             row.spacing = 18
@@ -172,7 +208,7 @@ final class CharacterCreator: NSWindowController, NSWindowDelegate, NSTextFieldD
         let validName = !nameField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && nameField.stringValue.count <= 40
         statusLabel.stringValue = "필수 이미지 \(count)/8 · 저장하면 이미지를 앱 보관함에 복사하고 새 캐릭터 한 마리를 추가합니다. 원본 파일은 수정하지 않습니다."
         statusLabel.textColor = .secondaryLabelColor
-        saveButton.isEnabled = count == 8 && validName
+        saveButton.isEnabled = count == 8 && validName && !aiBusy
     }
     func controlTextDidChange(_ obj: Notification) { updateStatus() }
     @objc private func suggestName() { nameField.stringValue = store.suggestedName(); updateStatus() }
@@ -244,7 +280,102 @@ final class CharacterCreator: NSWindowController, NSWindowDelegate, NSTextFieldD
     }
     private func showError(_ error: Error) { statusLabel.stringValue = error.localizedDescription; statusLabel.textColor = .systemRed }
     @objc private func cancelCreation() { close() }
-    func windowWillClose(_ notification: Notification) { preview?.close(); preview = nil; onClosed?() }
+    func windowWillClose(_ notification: Notification) {
+        aiClosed = true; aiTask?.cancel(); aiWindow?.close(); aiWindow = nil
+        try? FileManager.default.removeItem(at: aiFolder)
+        preview?.close(); preview = nil; onClosed?()
+    }
+
+    private var renderers: [AIConnection] { aiStore.state.connections.filter(\.imageCapable) }
+    var isGenerating: Bool { aiBusy }
+    private var directors: [AIConnection] { aiStore.state.connections.filter { $0.provider == "anthropic" } }
+    func reloadAI() {
+        aiPicker.removeAllItems(); aiPicker.addItem(withTitle: "이미지 생성 API 선택")
+        aiPicker.addItems(withTitles: renderers.map { ($0.verified_at == nil ? "미검증 · " : "✓ ") + $0.name })
+        directorPicker.removeAllItems(); directorPicker.addItem(withTitle: "사용 안 함")
+        directorPicker.addItems(withTitles: directors.map { ($0.verified_at == nil ? "미검증 · " : "✓ ") + $0.name })
+        if let index = renderers.firstIndex(where: { $0.id == aiStore.state.renderer_id }) { aiPicker.selectItem(at: index+1) }
+        else if !renderers.isEmpty { aiPicker.selectItem(at: 1) }
+        if let index = directors.firstIndex(where: { $0.id == aiStore.state.director_id }) { directorPicker.selectItem(at: index+1) }
+    }
+    @objc private func selectAI() {
+        let r = aiPicker.indexOfSelectedItem-1, d = directorPicker.indexOfSelectedItem-1
+        aiStore.state.renderer_id = renderers.indices.contains(r) ? renderers[r].id : nil
+        aiStore.state.director_id = directors.indices.contains(d) ? directors[d].id : nil
+        do { try aiStore.persist() } catch { showError(error) }
+    }
+    @objc private func openAISettings() {
+        if let aiWindow { aiWindow.showWindow(nil); aiWindow.window?.makeKeyAndOrderFront(nil); return }
+        let settings = AIConnectionsWindow(store: aiStore)
+        settings.onChange = { [weak self] in self?.reloadAI() }
+        settings.onClosed = { [weak self] in self?.aiWindow = nil }
+        aiWindow = settings; settings.showWindow(nil); settings.window?.makeKeyAndOrderFront(nil)
+    }
+    @objc private func generateAll() {
+        makeMotions(CharacterSlot.allCases.filter { $0 != .standing && (overwriteAI.state == .on || files[$0] == nil) })
+    }
+    @objc private func generateOne(_ sender: NSButton) {
+        let slot = CharacterSlot.allCases[sender.tag]
+        if slot == .standing { generateAll() } else { makeMotions([slot]) }
+    }
+    @objc private func cancelAI() {
+        aiTask?.cancel(); cancelAIButton.isEnabled = false
+        aiStatus.stringValue = "취소 요청 중… 진행 중이던 요청은 과금될 수 있습니다. 완료한 모션은 유지합니다."
+    }
+    private func setAIBusy(_ busy: Bool) {
+        aiBusy = busy; generateAllButton.isEnabled = !busy; cancelAIButton.isEnabled = busy
+        for button in aiButtons.values { button.isEnabled = !busy }
+        for button in chooseButtons { button.isEnabled = !busy }
+        templatePicker.isEnabled = !busy; layoutPicker.isEnabled = !busy; aiPicker.isEnabled = !busy
+        directorPicker.isEnabled = !busy; aiManageButton.isEnabled = !busy; overwriteAI.isEnabled = !busy
+        updateStatus()
+    }
+    func makeMotions(_ slots: [CharacterSlot]) {
+        guard !aiBusy else { return }
+        do {
+            guard !slots.isEmpty else { throw AIError.message("모든 모션이 있습니다. 개별 재생성 또는 ‘기존 모션도 다시 만들기’를 선택하세요.") }
+            guard let originalStanding = files[.standing] else { throw AIError.message("기본 정지 자세 PNG를 먼저 선택하세요.") }
+            let index = aiPicker.indexOfSelectedItem-1
+            guard renderers.indices.contains(index), renderers[index].verified_at != nil else { throw AIError.message("이미지 API를 추가·검증하고 선택하세요.") }
+            let renderer = renderers[index], key = try aiStore.secrets.get(renderer.id)
+            let d = directorPicker.indexOfSelectedItem-1
+            let director = directors.indices.contains(d) ? directors[d] : nil
+            if let director, director.verified_at == nil { throw AIError.message("Claude 보조 API도 먼저 검증하세요.") }
+            let directorKey = try director.map { try aiStore.secrets.get($0.id) }
+            let layout = layoutPicker.indexOfSelectedItem == 0 ? "split" : "continuous", base = template
+            try FileManager.default.createDirectory(at: aiFolder, withIntermediateDirectories: true)
+            let standing = aiFolder.appendingPathComponent(UUID().uuidString + "-standing.png")
+            try FileManager.default.copyItem(at: originalStanding, to: standing)
+            let service = aiService
+            setAIBusy(true); aiStatus.textColor = .secondaryLabelColor
+            aiTask = Task { [weak self] in
+                guard let self else { return }
+                var completed = 0
+                defer { if !self.aiClosed { self.setAIBusy(false); self.aiTask = nil } }
+                do {
+                    for slot in slots {
+                        try Task.checkCancellation()
+                        self.aiStatus.stringValue = "\(completed)/\(slots.count) · \(slot.title) 생성 중… 정지 이미지 + 모션 예시 전송"
+                        let output = self.aiFolder.appendingPathComponent(UUID().uuidString + "-" + slot.filename)
+                        let url = try await service.generate(profile: renderer, key: key, slot: slot, layout: layout,
+                            standing: standing, example: slot.example(base, in: self.imagesRoot), destination: output,
+                            mirror: base == .puppy && slot == .walkLeft, director: director, directorKey: directorKey)
+                        try Task.checkCancellation()
+                        guard !self.aiClosed else { return }
+                        try self.assign(url, to: slot)
+                        if slot == .cursorJump { self.grips["jump"] = CustomCharacter.defaultGrips(base)["jump"] }
+                        if slot == .cursorRoll { self.grips["roll"] = CustomCharacter.defaultGrips(base)["roll"] }
+                        completed += 1
+                    }
+                    self.aiStatus.stringValue = "\(completed)개 모션 생성 완료. 미리보기로 자세와 커서 손 위치를 확인한 뒤 저장하세요."
+                } catch {
+                    guard !self.aiClosed else { return }
+                    self.aiStatus.textColor = .systemRed
+                    self.aiStatus.stringValue = "\(completed)/\(slots.count) 완료 · " + (Task.isCancelled ? "생성을 취소했습니다. 진행 중 요청은 과금될 수 있습니다." : error.localizedDescription) + " 완료한 모션과 기존 이미지는 유지합니다."
+                }
+            }
+        } catch { aiStatus.textColor = .systemRed; aiStatus.stringValue = error.localizedDescription }
+    }
 }
 
 @MainActor

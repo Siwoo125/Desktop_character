@@ -62,3 +62,9 @@ Windows는 공개 Win32/DWM API와 PySide6 투명 창을 사용합니다. 실제
 ## 수동 확인
 
 자동 검사 후 실제 macOS/Windows에서 투명 창·트레이, 2종류와 중복 복사본의 독립 동작, 드래그·배율, 여러 창의 가림·이동·최소화, 혼합 DPI 모니터, 조종 포커스, 커서 잡기의 중단·복귀, 생성·삭제·재실행 복원을 확인하세요. 호스팅 CI 검사는 모든 실기기 환경을 대체하지 않습니다.
+
+## AI 모션 생성 구조
+
+`ai/motions.json`의 동일한 프롬프트·기본 모델을 두 플랫폼에서 사용합니다. `Sources/AIMotion.swift`와 `windows/desktop_pet/ai_motion.py`는 공식 API 요청·이미지 처리·보안 저장을 담당하고, `AIConnectionsWindow.swift`와 `ai_ui.py`는 계정 추가·모델 조회 검증 화면을 담당합니다. UI에서는 비동기로 한 장씩 생성하고 검사를 통과한 결과만 적용합니다. API 키는 키체인/자격 증명 관리자에만 저장하며 메타데이터 파일에는 포함하지 않습니다.
+
+macOS의 `AIMotionChecks`와 Windows의 `ai_checks.py`는 가짜 HTTP·자격 증명 저장소로 두 이미지 전송, 조회 전용 검증, 배경 투명화, 전체·개별 생성, 실패 보존과 취소를 검사합니다. 실제 API는 호출하지 않습니다. `ai/motions.json`이 앱 번들·PyInstaller `_internal/ai`에 포함되어야 합니다. 상세 사용법은 [AI 모션 안내](AI_MOTIONS.md)를 참고하세요.

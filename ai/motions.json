@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "defaults": {
+    "openai": "gpt-image-2.5-flare",
+    "gemini": "gemini-nano-banana-2.1",
+    "anthropic": "claude-opus-5-5"
+  },
+  "instructions": "Create one production-ready pixel-art animation sprite sheet. Image 1 is the ONLY character identity reference: preserve its species, face, silhouette, clothing, palette and pixel style. Image 2 is a MOTION/POSE/LAYOUT reference only: replace that example character with Image 1's character in every cell. Do not copy Image 2's identity. Keep a consistent character scale, full body inside every equal-size cell, generous transparent margins and aligned feet where appropriate. No empty cells, duplicate placeholder frames, captions, grid lines, borders, arrows, mouse pointer, scenery or checkerboard. Frames run left-to-right on the top row, then left-to-right on the bottom row. Output exactly one image, no text.",
+  "motions": {
+    "gaze": "Exactly 3 poses in a single row: look upper-left, look straight up, look upper-right. Keep the body still and feet aligned.",
+    "walk": "8-frame seamless walking cycle facing RIGHT, with distinct contact, down, passing and up poses. Keep feet at the same baseline. Do not move the character across the sheet except to center it in each cell.",
+    "walk_left": "8-frame seamless walking cycle facing LEFT. Every pose must face LEFT even if the original example faces right. Keep feet at the same baseline.",
+    "run": "8-frame energetic running cycle facing RIGHT, with distinct stretched airborne and compressed contact poses. A faster, more energetic gait than walking.",
+    "idle": "8-frame gentle idle cycle: stand still, blink once, subtly breathe and wag tail if the character has one. Preserve foot position and body scale.",
+    "leap_split": "Top row: upward jump preparation/crouch, airborne upward leap, pose immediately before landing, landing. Bottom row: downward drop preparation, falling, pose immediately before landing, landing. Exactly 4 poses per row.",
+    "leap_continuous": "One continuous 8-frame jump: preparation/crouch, strong takeoff, ascending, apex, descending, immediately before landing, landing/compression, recovery.",
+    "cursor_jump": "8 poses: prepare, takeoff, ascend toward an imaginary cursor, reach, grasp imaginary cursor with front hand/paw, descend while holding it, land while holding it, recover holding it. Cursor contact is at the front hand in frames 5-8. DO NOT DRAW ANY CURSOR or object.",
+    "cursor_roll": "8-frame playful full-body rolling cycle while holding an imaginary tiny object between front hands/paws. Distinct rotating orientations, full body inside each cell. DO NOT DRAW ANY CURSOR or object. Keep hands visible for cursor attachment calibration."
+  }
+}
