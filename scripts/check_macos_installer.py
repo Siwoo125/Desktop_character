@@ -18,7 +18,7 @@ def main():
             installer = mount / "바탕화면 친구 설치.app"
             payload = installer / "Contents/Resources/바탕화면 강아지.app"
             for bundle, executable in ((installer, "Installer"), (payload, "DesktopDog")):
-                subprocess.run(["codesign", "--verify", "--deep", "--strict", str(bundle)], check=True)
+                subprocess.run(["codesign", "--verify", "--deep", "--strict", "--verbose=4", str(bundle)], check=True)
                 info = plistlib.loads((bundle / "Contents/Info.plist").read_bytes())
                 assert info["CFBundleShortVersionString"] == version
                 binary = bundle / "Contents/MacOS" / executable

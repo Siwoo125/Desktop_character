@@ -69,7 +69,7 @@ def main():
     if output.exists():
         output.unlink()
     subprocess.run(["hdiutil", "create", "-volname", f"DesktopCharacter {version}", "-srcfolder", str(image),
-                    "-fs", "HFS+", "-format", "UDZO", "-ov", str(output)], check=True)
+                    "-fs", "APFS", "-format", "UDZO", "-ov", str(output)], check=True)
     checked_hdiutil("verify", output)
     print(output)
 
